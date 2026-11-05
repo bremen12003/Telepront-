@@ -1,1 +1,72 @@
 
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Preparar carpeta www con el index.html
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Plugin de archivos (carpeta Descargas/Letras)
+        run: |
+          V=$(node -p "require('./node_modules/@capacitor/core/package.json').version.split('.')[0]")
+          npm install @capacitor/filesystem@^$V || npm install @capacitor/filesystem@latest
+
+      - name: Agregar plataforma Android
+        run: npx cap add android
+
+      - name: Permiso de micrófono (VoiceGlide)
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q "android.permission.RECORD_AUDIO" "$M" || sed -i '0,/<application/s##<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <application#' "$M"
+          cat "$M"
+
+      - name: Permisos de archivos (Descargas/Letras)
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          for P in MANAGE_EXTERNAL_STORAGE READ_EXTERNAL_STORAGE WRITE_EXTERNAL_STORAGE; do
+            grep -q "android.permission.$P" "$M" || sed -i "0,/<application/s##<uses-permission android:name=\"android.permission.$P\" />\n    <application#" "$M"
+          done
+          grep -q requestLegacyExternalStorage "$M" || sed -i '0,/<application/s##<application android:requestLegacyExternalStorage="true"#' "$M"
+          cat "$M"
+
+      - name: Sincronizar Capacitor
+        run: npx cap sync android
+
+      - name: Dar permisos a gradlew
+        run: chmod +x android/gradlew
+
+      - name: Compilar APK debug
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Subir APK como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: telepronter-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
