@@ -1,0 +1,9 @@
+{
+  "appId": "com.versatilidad.telepronter",
+  "appName": "Telepronter",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true
+  }
+}
