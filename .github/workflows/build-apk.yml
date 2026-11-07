@@ -31,10 +31,10 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
-      - name: Plugin de archivos (carpeta Descargas/Letras)
+      - name: Plugins (archivos y botón atrás)
         run: |
           V=$(node -p "require('./node_modules/@capacitor/core/package.json').version.split('.')[0]")
-          npm install @capacitor/filesystem@^$V || npm install @capacitor/filesystem@latest
+          npm install @capacitor/filesystem@^$V @capacitor/app@^$V || npm install @capacitor/filesystem@latest @capacitor/app@latest
 
       - name: Agregar plataforma Android
         run: npx cap add android
